@@ -411,3 +411,105 @@ Keseluruhan antarmuka modul Cuti dan Dinas Luar pada sistem SIGAP mengedepankan 
 
 --- 
 *Laporan ini disusun sebagai referensi teknis pengembangan GUI aplikasi SIGap versi Object Storage.*
+
+### User Input
+
+cuplikan koding kalender cuti
+
+### Planner Response
+
+Berikut adalah cuplikan koding untuk fitur **Kalender Cuti (Matrix Monitoring)**. Fitur ini menggunakan teknik *High-Density Table* dengan kolom nama yang tetap (*sticky column*) agar memudahkan pemantauan distribusi cuti pegawai dalam satu bulan.
+
+### 1. Struktur Blade/HTML (Matrix Table)
+Koding ini menampilkan baris pegawai dan kolom tanggal secara dinamis.
+
+```html
+<!-- Matrix Monitoring Cuti -->
+<div class="table-responsive bg-white border" style="overflow-x: auto; max-height: 600px;">
+    <table class="table table-bordered table-sm mb-0 table-matrix-responsive">
+        <thead class="bg-primary text-white text-center sticky-top">
+            <tr>
+                <!-- Kolom Nama yang Menempel (Sticky) -->
+                <th class="align-middle sticky-col p-1" style="width: 200px; left: 0; z-index: 11; background-color: #4e73df;">
+                    PEGAWAI
+                </th>
+                @foreach($matrixDays as $day)
+                    <th class="p-1 {{ $day->isWeekend() ? 'bg-secondary' : '' }}">
+                        <div style="font-size: 0.8em;">{{ $day->format('d') }}</div>
+                        <div style="font-size: 0.7em; opacity: 0.8;">{{ $day->isoFormat('dd') }}</div>
+                    </th>
+                @endforeach
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($pegawai as $p)
+                <tr>
+                    <td class="font-weight-bold sticky-col bg-white align-middle p-1" 
+                        style="position: sticky; left: 0; z-index: 5; border-right: 2px solid #ddd;">
+                        {{ $p->nama_lengkap }}
+                    </td>
+                    @foreach($matrixDays as $day)
+                        @php 
+                            $info = $matrixData[$p->nip][$day->format('Y-m-d')] ?? null;
+                        @endphp
+                        @if($info)
+                            <!-- Sel Terisi (Sedang Cuti) -->
+                            <td class="{{ $info['color'] }} text-center text-white align-middle p-0" title="{{ $info['tooltip'] }}">
+                                <i class="fas fa-check" style="font-size: 0.6rem;"></i>
+                            </td>
+                        @else
+                            <td class="{{ $day->isWeekend() ? 'bg-light' : '' }} p-0"></td>
+                        @endif
+                    @endforeach
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+</div>
+```
+
+### 2. Gaya CSS (Sticky & Responsive)
+Gaya ini memastikan tabel dapat digeser secara horizontal namun kolom nama tetap terlihat.
+
+```css
+/* Pengaturan Tabel Matrix agar Responsive */
+.table-matrix-responsive {
+    width: 100%;
+    min-width: 1000px; /* Memaksa scroll horizontal pada layar kecil */
+    font-size: 0.8rem;
+    table-layout: fixed; /* Memastikan lebar kolom seragam */
+}
+
+/* Logic Kolom Sticky */
+.sticky-col {
+    position: sticky;
+    background-color: white;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.05); /* Bayangan halus agar terpisah dari data */
+}
+
+/* Warna Indikator Jenis Cuti */
+.bg-cuti-tahunan { background-color: #4e73df !important; } /* Biru */
+.bg-cuti-sakit { background-color: #e74a3b !important; }   /* Merah */
+.bg-cuti-penting { background-color: #36b9cc !important; } /* Cyan */
+.bg-cuti-besar { background-color: #858796 !important; }   /* Abu-abu */
+
+/* Tooltip & Hover Effect */
+.table-matrix-responsive td:hover {
+    filter: brightness(90%);
+    cursor: pointer;
+}
+```
+
+### 3. Logika Ringkas (Legend)
+Indikator warna untuk mempermudah pembacaan jenis cuti di bawah kalender.
+
+```html
+<div class="d-flex flex-wrap mb-3 small">
+    <div class="mr-3"><span class="badge badge-primary mr-1">&nbsp;</span> Tahunan</div>
+    <div class="mr-3"><span class="badge badge-danger mr-1">&nbsp;</span> Sakit</div>
+    <div class="mr-3"><span class="badge badge-info mr-1">&nbsp;</span> Penting</div>
+    <div class="mr-3"><span class="badge badge-secondary mr-1">&nbsp;</span> Besar</div>
+</div>
+```
+
+Komponen ini sangat krusial bagi pimpinan atau admin SDM untuk melihat apakah ada penumpukan pegawai yang mengambil cuti di tanggal yang sama.
